@@ -46,7 +46,8 @@ foreach ($language in @{
 			"Remove Repeated Phrases 2.dll",
 			"Remove 30 Repeated Sentences.dll",
 			"Replacer.dll",
-			"Thread Linker.dll"
+			"Thread Linker.dll",
+			"VNR.dll"
 		))
 		{
 			copy -Force -Recurse -Verbose -Destination "$folder/$arch" -Path "Release_$arch/$file";
