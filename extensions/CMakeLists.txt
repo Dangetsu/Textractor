@@ -5,7 +5,7 @@ find_qt5(Core Widgets)
 cmake_policy(SET CMP0037 OLD)
 
 add_library(Bing\ Translate MODULE bingtranslate.cpp translatewrapper.cpp network.cpp extensionimpl.cpp)
-add_library(VNR MODULE vnr.cpp extensionimpl.cpp network.cpp ../GUI/host/util.cpp)
+add_library(VNR MODULE vnr.cpp extensionimpl.cpp network.cpp ../GUI/host/util.cpp pugixml.cpp)
 add_library(Copy\ to\ Clipboard MODULE copyclipboard.cpp extensionimpl.cpp)
 add_library(Extra\ Newlines MODULE extranewlines.cpp extensionimpl.cpp)
 add_library(Extra\ Window MODULE extrawindow.cpp extensionimpl.cpp)
