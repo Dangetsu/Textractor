@@ -12,7 +12,6 @@
 extern const char* SELECT_LANGUAGE;
 extern const char* SELECT_LANGUAGE_MESSAGE;
 
-const QString CACHE_FILE = QString("VRN %1 Cache.txt");
 const std::wstring EMPTY_WSTRING = L"";
 const char* SETTINGS_GROUP = "VNR";
 const char* SETTINGS_LANGUAGE = u8"Language";
@@ -119,9 +118,7 @@ public:
 	void saveCache(std::wstring fileMd5, std::wstring key, std::wstring value)
 	{
 		std::wstring fileIndex = _concateIndex(fileMd5, key);
-		QTextFile file(CACHE_FILE.arg(fileIndex), QIODevice::WriteOnly | QIODevice::Truncate);
 		translationCache->insert({ fileIndex, value });
-		file.write(S(value).toUtf8());
 	}
 	std::wstring getCache(std::wstring fileMd5, std::wstring key)
 	{
@@ -156,6 +153,18 @@ std::wstring calcMd5Hash(QByteArray string)
 	return convertStringToWstring(QCryptographicHash::hash(string, QCryptographicHash::Md5).toHex().toStdString());
 }
 
+std::vector<std::wstring> explode(std::wstring string, std::wstring delimiter)
+{
+	std::vector<std::wstring> parts;
+	size_t pos = 0;
+	while ((pos = string.find(delimiter)) != std::wstring::npos) {
+		parts.push_back(string.substr(0, pos));
+		string.erase(0, pos + delimiter.length());
+	}
+	parts.push_back(string); // append last item
+	return parts;
+}
+
 std::wstring extractTranslationsFromXmlByContext(std::wstring xmlText, std::wstring searchContext)
 {
 	pugi::xml_document doc;
@@ -163,15 +172,24 @@ std::wstring extractTranslationsFromXmlByContext(std::wstring xmlText, std::wstr
 	if (!result) {
 		return EMPTY_WSTRING;
 	}
-	searchContext.erase(searchContext.find_last_not_of(L"\n") + 1);
+
 	std::wstring translations;
 	for (pugi::xml_node comment : doc.child(L"grimoire").child(L"comments").children())
 	{
-		std::wstring commentId = comment.attribute(L"id").value();
+		std::wstring commentLanguage = comment.child_value(L"language");
+		int commentId = std::stoi(comment.attribute(L"id").value());
 		std::wstring commentText = comment.child_value(L"text");
 		std::wstring commentContext = comment.child_value(L"context");
-		std::wstring commentLanguage = comment.child_value(L"language");
-		if (searchContext == commentContext && commentLanguage == translateLanguage->c_str()) { // todo: add language select and fix context with ? and !. Think about ... in begin sentence.
+		int commentContextSize = std::stoi(comment.child(L"context").attribute(L"size").value());
+		if (commentContextSize > 1) {
+			std::vector<std::wstring> parts = explode(commentContext, L"||");
+			commentContext = parts.back();
+		}
+
+		std::wstring searchContextWithoutWhitespaces = searchContext;
+		searchContextWithoutWhitespaces.erase(std::remove(searchContextWithoutWhitespaces.begin(), searchContextWithoutWhitespaces.end(), L'　'), searchContextWithoutWhitespaces.end());
+		if ((searchContext == commentContext || searchContextWithoutWhitespaces == commentContext) && commentLanguage == translateLanguage->c_str())
+		{
 			translations += FormatString(L"\n %s", commentText);
 		}
 	}
@@ -211,6 +229,6 @@ bool ProcessSentence(std::wstring& sentence, SentenceInfo sentenceInfo)
 	}
 
 	sentence += extractTranslationsFromXmlByContext(response, sentence);
-	sentence += L"\n VNR executed";
+	sentence += L"\n VNR executed for " + fileMd5;
 	return true;
 }
