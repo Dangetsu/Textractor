@@ -1,13 +1,13 @@
 ﻿#include "extension.h"
 #include "network.h"
 #include "defs.h"
-#include "../GUI/host/util.h"
 #include <QStringList>
 #include <QFile>
 #include <QTimer>
 #include <QCryptographicHash>
 #include <qtcommon.h>
 #include <pugixml.hpp>
+#include <Psapi.h>
 
 extern const char* SELECT_LANGUAGE;
 extern const char* SELECT_LANGUAGE_MESSAGE;
@@ -197,8 +197,16 @@ std::wstring extractTranslationsFromXmlByContext(std::wstring xmlText, std::wstr
 	return translations;
 }
 
+std::optional<std::wstring> GetModuleFilename(DWORD processId, HMODULE module = NULL)
+{
+	std::vector<wchar_t> buffer(MAX_PATH);
+	if (AutoHandle<> process = OpenProcess(PROCESS_VM_READ | PROCESS_QUERY_INFORMATION, FALSE, processId))
+		if (GetModuleFileNameExW(process, module, buffer.data(), MAX_PATH)) return buffer.data();
+	return {};
+}
+
 std::wstring calcFileMd5ByProcessId(DWORD processId) {
-	auto moduleName = Util::GetModuleFilename(processId);
+	auto moduleName = GetModuleFilename(processId);
 	if (!moduleName) return EMPTY_WSTRING;
 
 	QString moduleNameQString = QString::fromStdWString(moduleName.value());
@@ -229,6 +237,5 @@ bool ProcessSentence(std::wstring& sentence, SentenceInfo sentenceInfo)
 	}
 
 	sentence += extractTranslationsFromXmlByContext(response, sentence);
-	sentence += L"\n VNR executed for " + fileMd5;
 	return true;
 }
